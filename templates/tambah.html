@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Tambah Mahasiswa</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input { padding: 8px; width: 300px; }
+        .pesan { padding: 10px; margin-bottom: 10px; border-radius: 5px; width:300px;}
+        .error { background-color: #ffcccc; color: red; }
+    </style>
+</head>
+<body>
+    <h2>Tambah Data Mahasiswa</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="pesan {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form action="/tambah" method="POST">
+        <div class="form-group">
+            <label>NIM:</label>
+            <input type="number" name="nim" required>
+        </div>
+        <div class="form-group">
+            <label>Nama:</label>
+            <input type="text" name="nama" required>
+        </div>
+        <div class="form-group">
+            <label>Program Studi:</label>
+            <input type="text" name="program_studi" required>
+        </div>
+        <div class="form-group">
+            <label>Angkatan (Tahun):</label>
+            <input type="number" name="angkatan" required>
+        </div>
+        <div class="form-group">
+            <label>IPK:</label>
+            <input type="number" step="0.01" name="ipk" required>
+        </div>
+        <button type="submit" style="padding: 10px 15px; cursor: pointer;">Simpan</button>
+        <a href="/" style="margin-left: 10px;">Kembali</a>
+    </form>
+</body>
+</html> 

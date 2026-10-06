@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Daftar Mahasiswa</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .pesan { padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+        .error { background-color: #ffcccc; color: red; }
+        .success { background-color: #ccffcc; color: green; }
+        .btn { padding: 5px 10px; text-decoration: none; color: black; border: 1px solid #ccc; background: #eee; cursor:pointer;}
+    </style>
+</head>
+<body>
+    <h2>Data Mahasiswa</h2>
+    
+    <!-- Tempat menampilkan pesan Error / Sukses -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="pesan {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <a href="/tambah" class="btn">+ Tambah Mahasiswa Baru</a>
+
+    <table>
+        <thead>
+            <tr>
+                <th>NIM</th>
+                <th>Nama</th>
+                <th>Program Studi</th>
+                <th>Angkatan</th>
+                <th>IPK</th>
+                <th>Lama Studi (Tahun)</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+            <tr>
+                <td>{{ row.nim }}</td>
+                <td>{{ row.nama }}</td>
+                <td>{{ row.program_studi }}</td>
+                <td>{{ row.angkatan }}</td>
+                <td>{{ row.ipk }}</td>
+                <td>{{ row.lama_studi }}</td> <!-- Menampilkan hitungan otomatis -->
+                <td>
+                    <a href="/edit/{{ row.nim }}" class="btn">Edit</a>
+                    <form action="/hapus/{{ row.nim }}" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus data ini?');">
+                        <button type="submit" class="btn">Hapus</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" style="text-align: center;">Belum ada data mahasiswa.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
