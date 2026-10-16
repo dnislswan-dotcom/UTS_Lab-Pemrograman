@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manajemen Employee</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --text:#1f2430; --muted:#6b7280; --line:#e3e6eb; --blue:#2f80ed; --red:#e53935; --green:#2e9e5b; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14161b; --card:#1d2027; --text:#e8eaee; --muted:#9aa1ad; --line:#2d313a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px 16px; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:760px; margin:0 auto; }
+  h1 { font-size:22px; margin:0 0 16px; }
+  h2 { font-size:16px; margin:0 0 12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
+  .card.editing { border-color:var(--blue); }
+  .grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  @media (max-width:560px) { .grid { grid-template-columns:1fr; } }
+  label { display:block; font-size:13px; color:var(--muted); margin-bottom:4px; }
+  input { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--text); font-size:14px; }
+  input:focus { outline:2px solid var(--blue); outline-offset:-1px; }
+  .row { display:flex; gap:8px; margin-top:14px; }
+  button { padding:8px 14px; border:none; border-radius:6px; font-size:14px; cursor:pointer; color:#fff; }
+  .btn-save { background:var(--green); }
+  .btn-update { background:var(--blue); }
+  .btn-cancel { background:transparent; color:var(--muted); border:1px solid var(--line); }
+  .btn-edit { background:var(--blue); padding:5px 10px; }
+  .btn-delete { background:var(--red); padding:5px 10px; }
+  .table-scroll { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { color:var(--muted); font-weight:600; font-size:13px; }
+  td.actions { display:flex; gap:6px; }
+  .empty { color:var(--muted); text-align:center; padding:18px 0; }
+  #msg { font-size:13px; margin-top:10px; min-height:18px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Manajemen Employee</h1>
+
+  <div class="card" id="formCard">
+    <h2 id="formTitle">Tambah Employee Baru</h2>
+    <form id="empForm" autocomplete="off">
+      <div class="grid">
+        <div><label for="name">Nama</label><input id="name" required></div>
+        <div><label for="position">Posisi</label><input id="position" placeholder="Staff"></div>
+        <div><label for="salary">Gaji</label><input id="salary" type="number" min="0"></div>
+      </div>
+      <div class="row">
+        <button type="submit" class="btn-save" id="submitBtn">Simpan</button>
+        <button type="button" class="btn-cancel" id="cancelBtn" hidden>Batal</button>
+      </div>
+      <div id="msg"></div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Daftar Employee</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>ID</th><th>Nama</th><th>Posisi</th><th>Gaji</th><th>Aksi</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  const KEY = "employees_v1";
+  const seed = [
+    { id: 1, name: "Andi",  position: "Staff",   salary: 5000000 },
+    { id: 2, name: "Budi",  position: "Manager", salary: 9000000 },
+    { id: 3, name: "Citra", position: "VP",      salary: 12000000 }
+  ];
+
+  // Muat data (localStorage jika tersedia, jika tidak pakai memori)
+  let employees;
+  try { employees = JSON.parse(localStorage.getItem(KEY)) || seed.slice(); }
+  catch (e) { employees = seed.slice(); }
+
+  function persist() {
+    try { localStorage.setItem(KEY, JSON.stringify(employees)); } catch (e) {}
+  }
+
+  let editingId = null;
+  const $ = id => document.getElementById(id);
+  const rp = n => "Rp" + new Intl.NumberFormat("id-ID").format(n);
+
+  function say(text, ok) {
+    const m = $("msg");
+    m.textContent = text;
+    m.style.color = ok ? "var(--green)" : "var(--muted)";
+  }
+
+  // READ: tampilkan daftar
+  function render() {
+    const tb = $("tbody");
+    tb.innerHTML = "";
+    if (!employees.length) {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 5; td.className = "empty"; td.textContent = "Belum ada employee.";
+      tr.appendChild(td); tb.appendChild(tr);
+      return;
+    }
+    employees.forEach(e => {
+      const tr = document.createElement("tr");
+      [e.id, e.name, e.position, rp(e.salary)].forEach(v => {
+        const td = document.createElement("td");
+        td.textContent = v;           // textContent mencegah injeksi HTML
+        tr.appendChild(td);
+      });
+      const act = document.createElement("td");
+      act.className = "actions";
+
+      const edit = document.createElement("button");
+      edit.className = "btn-edit"; edit.textContent = "Edit";
+      edit.onclick = () => startEdit(e.id);
+
+      const del = document.createElement("button");
+      del.className = "btn-delete"; del.textContent = "Delete";
+      del.onclick = () => removeEmployee(e.id);
+
+      act.append(edit, del);
+      tr.appendChild(act);
+      tb.appendChild(tr);
+    });
+  }
+
+  // Masuk mode edit: isi form dengan data lama
+  function startEdit(id) {
+    const e = employees.find(x => x.id === id);
+    if (!e) return;
+    editingId = id;
+    $("name").value = e.name;
+    $("position").value = e.position;
+    $("salary").value = e.salary;
+    $("formTitle").textContent = "Edit Employee #" + id;
+    $("submitBtn").textContent = "Update";
+    $("submitBtn").className = "btn-update";
+    $("cancelBtn").hidden = false;
+    $("formCard").classList.add("editing");
+    say("");
+    $("name").focus();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function resetForm() {
+    editingId = null;
+    $("empForm").reset();
+    $("formTitle").textContent = "Tambah Employee Baru";
+    $("submitBtn").textContent = "Simpan";
+    $("submitBtn").className = "btn-save";
+    $("cancelBtn").hidden = true;
+    $("formCard").classList.remove("editing");
+  }
+
+  // CREATE / UPDATE
+  $("empForm").addEventListener("submit", ev => {
+    ev.preventDefault();
+    const name = $("name").value.trim();
+    const position = $("position").value.trim() || "Staff";
+    const salary = parseInt($("salary").value, 10) || 0;
+    if (!name) { say("Nama wajib diisi!"); return; }
+
+    if (editingId !== null) {
+      const e = employees.find(x => x.id === editingId);
+      if (e) { e.name = name; e.position = position; e.salary = salary; }
+      say("Data berhasil diupdate.", true);
+    } else {
+      const newId = employees.reduce((m, x) => Math.max(m, x.id), 0) + 1;
+      employees.push({ id: newId, name, position, salary });
+      say("Employee berhasil ditambahkan.", true);
+    }
+    persist();
+    resetForm();
+    render();
+  });
+
+  $("cancelBtn").onclick = () => { resetForm(); say(""); };
+
+  // DELETE
+  function removeEmployee(id) {
+    const e = employees.find(x => x.id === id);
+    if (!e || !confirm("Hapus " + e.name + "?")) return;
+    employees = employees.filter(x => x.id !== id);
+    if (editingId === id) resetForm();
+    persist();
+    render();
+    say("Employee dihapus.", true);
+  }
+
+  render();
+</script>
+</body>
+</html>
